@@ -1,0 +1,98 @@
+lr: 1e-06, batchsize: 128, steps: 120000, thresh: 0.01, c1: 1, c2: 1.5, c3: 0.0003, c4: 0.0001, test_acc: 0.944, test_loss: 0.882035
+lr: 1e-06, batchsize: 128, steps: 20000, thresh: 0.01, c1: 1, c2: 3, c3: 0.0003, c4: 0.0001, test_acc: 0.625, test_loss: 2.80794
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 1, c2: 3, c3: 0.0003, c4: 0.0001, test_acc: 0.62, test_loss: 3.14515
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 1, c2: 3, c3: 0.0003, c4: 0.0001, test_acc: 0.498, test_loss: 0.0258785
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 1, c2: 3, c3: 0.0003, c4: 0.0001, test_acc: 0.516, test_loss: 0.0765912
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0, c2: 1, c3: 0.0000, c4: 0.0000, test_acc: 0.495, test_loss: 0.091061
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0, c2: 1, c3: 0.0000, c4: 0.0000, test_acc: 0.7, test_loss: 3.31519
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 1, c2: 3, c3: 0.0003, c4: 0.0001, test_acc: 0.866, test_loss: 1.1119
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0, c2: 2, c3: 0.0003, c4: 0, test_acc: 0.769, test_loss: 0.993606
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0, c2: 10, c3: 0.0003, c4: 0, test_acc: 0.58, test_loss: 0.973707
+lr: 1e-06, batchsize: 128, steps: 3000, thresh: 0.01, c1: 0, c2: 10, c3: 0.0003, c4: 0, test_acc: 0.497, test_loss: 0.321543
+lr: 1e-06, batchsize: 128, steps: 3000, thresh: 0.01, c1: 0, c2: 10, c3: 0.0003, c4: 0, test_acc: 0.441, test_loss: 0.767029
+lr: 1e-06, batchsize: 128, steps: 3000, thresh: 0.01, c1: 0, c2: 100, c3: 0.0003, c4: 0, test_acc: 0.49, test_loss: 3.14838
+lr: 1e-06, batchsize: 128, steps: 3000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1, test_acc: 0.63, test_loss: 16.16
+lr: 1e-06, batchsize: 128, steps: 3000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 0.1, test_acc: 0.59, test_loss: 2.32089
+lr: 1e-06, batchsize: 128, steps: 3000, thresh: 0.01, c1: 1, c2: 10, c3: 0.0003, c4: 0.1, test_acc: 0.518, test_loss: 2.57193
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 1, c2: 10, c3: 0.0003, c4: 0.1, test_acc: 0.493, test_loss: 2.38699
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0.01, c2: 100, c3: 0.0003, c4: 0.1, test_acc: 0.543, test_loss: 1.34746
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0.1, c2: 100, c3: 0.0003, c4: 0.1, test_acc: 0.534, test_loss: 1.43364
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.01, c1: 0.1, c2: 100, c3: 0.0003, c4: 0.1, test_acc: 0.502, test_loss: 10.9278
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: nan
+lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.503, test_loss: 0.982216
+net: 1, lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.494, test_loss: 24.0049
+net: 0, lr: 1e-05, batchsize: 128, steps: 10000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 0, test_acc: 0.904, test_loss: 2.24508
+net: 1, lr: 1e-06, batchsize: 128, steps: 10000, thresh: 0.03, c1: 0, c2: 1, c3: 0, c4: 0, test_acc: 0.486, test_loss: 23.9873
+net: 1, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 1, c3: 0, c4: 0, test_acc: 0.513, test_loss: 23.9699
+net: 1, lr: 1e-07, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 1, c3: 0, c4: 0, test_acc: 0.546, test_loss: 24.0002
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 0, test_acc: 0.556, test_loss: 23.0259
+net: 1, lr: 1e-06, batchsize: 1, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 0, test_acc: 0.488, test_loss: 23.0259
+net: 1, lr: 0.001, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 0, test_acc: 0.51, test_loss: 23.0259
+net: 1, lr: 1e-08, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 0, test_acc: 0.542, test_loss: 23.0259
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 1e-06, test_acc: 0.506, test_loss: 23.0259
+net: 0, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 1e-06, test_acc: 0.624, test_loss: 4.48496
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 1e-06, test_acc: 0.651, test_loss: 3.18742
+net: 1, lr: 1e-07, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 1e-06, test_acc: 0.544, test_loss: 23.0259
+net: 1, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 1e-06, test_acc: 0.787, test_loss: 2.79638
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 1, c3: 0, c4: 1e-06, test_acc: 0.599, test_loss: 3.14342
+net: 1, lr: 1e-06, batchsize: 128, steps: 10000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.486, test_loss: 24.0204
+net: 0, lr: 1e-06, batchsize: 128, steps: 10000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.609, test_loss: 3.87268
+net: 0, lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.712, test_loss: 3.32263
+net: 0, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 0, c3: 0, c4: 1e-06, test_acc: 0.64, test_loss: 3.31789
+net: 0, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 0, c2: 1, c3: 0, c4: 1e-06, test_acc: 0.663, test_loss: 3.89496
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.498, test_loss: 24.0227
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.519, test_loss: 24.0227
+net: 1, lr: 0.01, batchsize: 128, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: 24.0259
+net: 1, lr: 1e-09, batchsize: 128, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.485, test_loss: 24.0202
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.495, test_loss: 24.0182
+net: 1, lr: 1e-06, batchsize: 256, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.5, test_loss: 24.0205
+net: 1, lr: 0.001, batchsize: 256, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.491, test_loss: 24.0216
+net: 1, lr: 1e-09, batchsize: 256, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.48, test_loss: 24.0237
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.617, test_loss: 3.77771
+net: 1, lr: 1e-05, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.668, test_loss: 1.4918
+net: 1, lr: 1e-06, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.68, test_loss: 2.44168
+net: 1, lr: 1e-06, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 10, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: 33.026
+net: 1, lr: 1e-06, batchsize: 128, steps: 10000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.645, test_loss: 4.32534
+net: 1, lr: 1e-07, batchsize: 128, steps: 10000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.559, test_loss: 4.51698
+net: 1, lr: 1e-08, batchsize: 128, steps: 10000, thresh: 0.03, c1: 1, c2: 10, c3: 0.0003, c4: 1e-06, test_acc: 0.472, test_loss: 10.2522
+net: 1, lr: 1e-07, batchsize: 128, steps: 10000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.511, test_loss: 5.79865
+net: 1, lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.679, test_loss: 1.40232
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.561, test_loss: 5.21869
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.629, test_loss: 4.70238
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.668, test_loss: 1.36052
+net: 1, lr: 1e-06, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.495, test_loss: 11.9131
+net: 1, lr: 1e-08, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.506, test_loss: 11.5483
+net: 1, lr: 0.0001, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.476, test_loss: 11.0779
+net: 0, lr: 0.0001, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.754, test_loss: 1.00352
+net: 0, lr: 1e-07, batchsize: 128, steps: 50000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.564, test_loss: 1.55394
+net: 0, lr: 1e-07, batchsize: 128, steps: 50000, thresh: 0.01, c1: 0, c2: 1, c3: 0, c4: 0, test_acc: 0.46, test_loss: 0.603588
+net: 0, lr: 1e-07, batchsize: 128, steps: 50000, thresh: 0.01, c1: 0, c2: 10, c3: 0, c4: 0, test_acc: 0.544, test_loss: 9.99999
+net: 0, lr: 0.001, batchsize: 128, steps: 50000, thresh: 0.01, c1: 0, c2: 10, c3: 0, c4: 0, test_acc: 0.544, test_loss: 10
+net: 0, lr: 0.001, batchsize: 128, steps: 100, thresh: 0.01, c1: 0, c2: 1, c3: 0, c4: 0, test_acc: 0.456, test_loss: nan
+net: 0, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.76, test_loss: 1.4357
+net: 0, lr: 0.001, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.544, test_loss: 11.4998
+net: 1, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.495, test_loss: 11.1031
+net: 1, lr: 1e-07, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.499, test_loss: 11.6442
+net: 1, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.502, test_loss: 10.8023
+net: 0, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.949, test_loss: 0.957759
+net: 1, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.476, test_loss: 12.0117
+net: 0, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.953, test_loss: 1.04862
+net: 0, lr: 1e-05, batchsize: 128, steps: 5000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.855, test_loss: 0.664855
+net: 0, lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.01, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.972, test_loss: 0.185816
+net: 0, lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.796, test_loss: 0.839024
+net: 0, lr: 1e-06, batchsize: 128, steps: 60000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.869, test_loss: 0.538686
+net: 0, lr: 1e-06, batchsize: 128, steps: 90000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.91, test_loss: 0.444783
+net: 0, lr: 1e-06, batchsize: 128, steps: 120000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.953, test_loss: 0.309506
+net: 0, lr: 1e-05, batchsize: 128, steps: 40000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: 0.0302153
+net: 0, lr: 1e-06, batchsize: 128, steps: 40000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: 0.0776251
+net: 0, lr: 1e-06, batchsize: 128, steps: 40000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: 0.0633891
+net: 0, lr: 1e-06, batchsize: 128, steps: 40000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.837, test_loss: 0.697847
+net: 0, lr: 1e-06, batchsize: 128, steps: 40000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.456, test_loss: 0.0798867
+net: 0, lr: 1e-06, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.707, test_loss: 1.13282
+net: 0, lr: 1e-06, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.499, test_loss: 0.0429421
+net: 0, lr: 1e-06, batchsize: 128, steps: 50000, thresh: 0.3, c1: 1, c2: 10, c3: 0.003, c4: 1e-06, test_acc: 0.505, test_loss: 0.521595
+net: 0, lr: 1e-06, batchsize: 128, steps: 50000, thresh: 0.3, c1: 1, c2: 10, c3: 0.003, c4: 1e-06, test_acc: 0.505, test_loss: 0.317552
+net: 0, lr: 1e-06, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.861, test_loss: 0.673203
+net: 0, lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.967, test_loss: 0.232876
+net: 0, lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.965, test_loss: 0.336857
+lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.964, test_loss: 0.327267
