@@ -102,3 +102,4 @@ lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003,
 lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.893, test_loss: 0.630315
 lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.883, test_loss: 0.747699
 lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.973, test_loss: 0.288101
+lr: 1e-05, batchsize: 128, steps: 50000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.974, test_loss: 0.278515
