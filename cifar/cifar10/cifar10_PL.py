@@ -39,24 +39,21 @@ import os
 import re
 import sys
 import tarfile
-import numpy as np
 
 from six.moves import urllib
 import tensorflow as tf
 
-import cifar10_input_VGG16 as cifar10_input
+import cifar10_input_PL as cifar10_input
 
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 32,
+tf.app.flags.DEFINE_integer('batch_size', 128,
                             """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_string('data_dir', '//code/logs/cifar10_data',
                            """Path to the CIFAR-10 data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
-tf.app.flags.DEFINE_float('keeprate', 0.5,
-                            """The keeprate for the dropout layers.""")
 
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
@@ -69,7 +66,7 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.00001       # Initial learning rate.
+INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -78,9 +75,6 @@ TOWER_NAME = 'tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
-data_dict = np.load('//code/vgg16.npy', encoding='latin1').item()
-trainable=True
-var_dict = {}
 
 def _activation_summary(x):
   """Helper to create summaries for activations.
@@ -157,9 +151,9 @@ def distorted_inputs():
   """
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
-  images, labels = cifar10_input.distorted_inputs(data_dir=data_dir,
-                                                  batch_size=FLAGS.batch_size)
+  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin/data_batch_10perc_skip.bin')
+  images, labels, _ = cifar10_input.distorted_inputs(data_dir=data_dir,
+                                                  batch_size=FLAGS.batch_size,partially_labelled=True,matrix_lab=False)
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)
@@ -182,7 +176,7 @@ def inputs(eval_data):
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
   data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
-  images, labels, _ = cifar10_input.inputs(eval_data=eval_data,
+  images, labels,_ = cifar10_input.inputs(eval_data=eval_data,
                                         data_dir=data_dir,
                                         batch_size=FLAGS.batch_size)
   if FLAGS.use_fp16:
@@ -191,69 +185,7 @@ def inputs(eval_data):
   return images, labels
 
 
-def avg_pool(bottom, name):
-    return tf.nn.avg_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
-
-def max_pool(bottom, name):
-    return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
-
-def conv_layer(bottom, in_channels, out_channels, name):
-    with tf.variable_scope(name):
-        filt, conv_biases = get_conv_var(3, in_channels, out_channels, name)
-
-        conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
-        bias = tf.nn.bias_add(conv, conv_biases)
-        relu = tf.nn.relu(bias)
-        
-        return relu
-
-def fc_layer(bottom, in_size, out_size, name):
-    with tf.variable_scope(name):
-        weights, biases = get_fc_var(in_size, out_size, name)
-
-        x = tf.reshape(bottom, [-1, in_size])
-        fc = tf.nn.bias_add(tf.matmul(x, weights), biases)
-
-        return fc
-        
-def get_conv_var(filter_size, in_channels, out_channels, name):
-    initial_value = tf.truncated_normal([filter_size, filter_size, in_channels, out_channels], 0.0, 0.001)
-    filters = get_var(initial_value, name, 0, name + "_filters")
-
-    initial_value = tf.truncated_normal([out_channels], .0, .001)
-    biases = get_var(initial_value, name, 1, name + "_biases")
-
-    return filters, biases
-
-def get_fc_var(in_size, out_size, name):
-    initial_value = tf.truncated_normal([in_size, out_size], 0.0, 0.001)
-    weights = get_var(initial_value, name, 0, name + "_weights")
-    
-    initial_value = tf.truncated_normal([out_size], .0, .001)
-    biases = get_var(initial_value, name, 1, name + "_biases")
-    
-    return weights, biases
-
-def get_var(initial_value, name, idx, var_name):
-    if data_dict is not None and name in data_dict:
-        value = data_dict[name][idx]
-    else:
-        value = initial_value
-                
-    if trainable:
-        var = tf.Variable(value, name=var_name)
-    else:
-        var = tf.constant(value, dtype=tf.float32, name=var_name)
-
-    var_dict[(name, idx)] = var
-
-    print(var_name, var.get_shape().as_list())
-    print(initial_value.get_shape())
-    assert var.get_shape() == initial_value.get_shape()
-
-    return var
-
-def inference(images,batchS = 0, testKeep = 0):
+def inference(images):
   """Build the CIFAR-10 model.
 
   Args:
@@ -268,49 +200,75 @@ def inference(images,batchS = 0, testKeep = 0):
   # by replacing all instances of tf.get_variable() with tf.Variable().
   #
   # conv1
-  batchsize=FLAGS.batch_size
-  keeprate = tf.constant(FLAGS.keeprate)
-  if batchS>0:
-    batchsize = batchS
-  if testKeep>0:
-    keeprate = tf.constant(testKeep)
-    
-    
-  conv1_1 = conv_layer(images,3,64, "conv1_1")
-  conv1_2 = conv_layer(conv1_1,64,64, "conv1_2")
-  pool1 = max_pool(conv1_2, 'pool1')
+  with tf.variable_scope('conv1') as scope:
+    kernel = _variable_with_weight_decay('weights',
+                                         shape=[5, 5, 3, 64],
+                                         stddev=5e-2,
+                                         wd=0.0)
+    conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
+    pre_activation = tf.nn.bias_add(conv, biases)
+    conv1 = tf.nn.relu(pre_activation, name=scope.name)
+    _activation_summary(conv1)
 
-  conv2_1 = conv_layer(pool1,64,128, "conv2_1")
-  conv2_2 = conv_layer(conv2_1,128,128, "conv2_2")
-  pool2 = max_pool(conv2_2, 'pool2')
+  # pool1
+  pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
+                         padding='SAME', name='pool1')
+  # norm1
+  norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+                    name='norm1')
 
-  conv3_1 = conv_layer(pool2,128,256, "conv3_1")
-  conv3_2 = conv_layer(conv3_1,256,256, "conv3_2")
-  conv3_3 = conv_layer(conv3_2,256,256, "conv3_3")
-  pool3 = max_pool(conv3_3, 'pool3')
+  # conv2
+  with tf.variable_scope('conv2') as scope:
+    kernel = _variable_with_weight_decay('weights',
+                                         shape=[5, 5, 64, 64],
+                                         stddev=5e-2,
+                                         wd=0.0)
+    conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.1))
+    pre_activation = tf.nn.bias_add(conv, biases)
+    conv2 = tf.nn.relu(pre_activation, name=scope.name)
+    _activation_summary(conv2)
 
-  conv4_1 = conv_layer(pool3,256,512, "conv4_1")
-  conv4_2 = conv_layer(conv4_1,512,512, "conv4_2")
-  conv4_3 = conv_layer(conv4_2,512,512, "conv4_3")
-  pool4 = max_pool(conv4_3, 'pool4')
+  # norm2
+  norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+                    name='norm2')
+  # pool2
+  pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
 
-  conv5_1 = conv_layer(pool4,512,512, "conv5_1")
-  conv5_2 = conv_layer(conv5_1,512,512, "conv5_2")
-  conv5_3 = conv_layer(conv5_2,512,512, "conv5_3")
-  pool5 = max_pool(conv5_3, 'pool5')
-  
-  dropout1 = tf.nn.dropout(pool5, keeprate)
+  # local3
+  with tf.variable_scope('local3') as scope:
+    # Move everything into depth so we can perform a single matrix multiply.
+    reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
+    dim = reshape.get_shape()[1].value
+    weights = _variable_with_weight_decay('weights', shape=[dim, 384],
+                                          stddev=0.04, wd=0.004)
+    biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
+    local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
+    _activation_summary(local3)
 
-  fcsecondtolast = fc_layer(dropout1,25088, 4069, "fcsecondtolast")
-  print(fcsecondtolast.get_shape().as_list()[1:])# == [4096]
-  relu6 = tf.nn.relu(fcsecondtolast)
+  # local4
+  with tf.variable_scope('local4') as scope:
+    weights = _variable_with_weight_decay('weights', shape=[384, 192],
+                                          stddev=0.04, wd=0.004)
+    biases = _variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
+    local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
+    _activation_summary(local4)
 
-  dropout2 = tf.nn.dropout(relu6, keeprate)
-  
-  fcfinal = fc_layer(dropout2,4069,10, "fcfinal")
-  prob = tf.nn.softmax(fcfinal, name="prob")
+  # linear layer(WX + b),
+  # We don't apply softmax here because
+  # tf.nn.sparse_softmax_cross_entropy_with_logits accepts the unscaled logits
+  # and performs the softmax internally for efficiency.
+  with tf.variable_scope('softmax_linear') as scope:
+    weights = _variable_with_weight_decay('weights', [192, NUM_CLASSES],
+                                          stddev=1/192.0, wd=0.0)
+    biases = _variable_on_cpu('biases', [NUM_CLASSES],
+                              tf.constant_initializer(0.0))
+    softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
+    _activation_summary(softmax_linear)
 
-  return prob
+  return softmax_linear
 
 
 def loss(logits, labels):

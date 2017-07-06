@@ -158,7 +158,7 @@ def distorted_inputs():
   """
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
+  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin/data_batch_10perc_skip.bin')
   images, labels, _ = cifar10_input.distorted_inputs(data_dir=data_dir,
                                                   batch_size=FLAGS.batch_size,partially_labelled=True,matrix_lab=False)
   if FLAGS.use_fp16:
@@ -314,9 +314,9 @@ def loss(logits, labels):
     Loss tensor of type float.
   """
   # Calculate the average cross entropy loss across the batch.
-  labels = tf.cast(labels, tf.int64)
-  print(labels)
-  print(logits)
+  labels = tf.squeeze(tf.cast(labels, tf.int64))
+  #print(labels)
+  #print(logits)
   cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
       labels=labels, logits=logits, name='cross_entropy_per_example')
   cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
