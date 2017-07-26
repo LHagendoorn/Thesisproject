@@ -90,8 +90,9 @@ def read_cifar10(filename_queue):
   result.width = 32
   result.depth = 3
   #['airplane','automobile','bird','cat','deer','dog','frog','horse', 'ship','truck']
-  supLab = tf.constant([0,0,1,1,1,1,1,1,0,0]) #Man mande vs animals
+  #supLab = tf.constant([0,0,1,1,1,1,1,1,0,0]) #Man mande vs animals
   #supLab = tf.constant([0,0,1,1,1,1,1,0,0,0]) #Man mande+horse vs animals-horse
+  supLab = tf.constant([0,0,1,0,0,1,0,1,1,1]) #Man mande vs animals mixed
   image_bytes = result.height * result.width * result.depth
   # Every record consists of a label followed by the image, with a
   # fixed number of bytes for each.

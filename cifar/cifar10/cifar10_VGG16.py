@@ -49,7 +49,7 @@ import cifar10_input_VGG16 as cifar10_input
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 32,
+tf.app.flags.DEFINE_integer('batch_size', 48,
                             """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_string('data_dir', '//code/logs/cifar10_data',
                            """Path to the CIFAR-10 data directory.""")

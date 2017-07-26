@@ -1,0 +1,1 @@
+lr: 1e-05, batchsize: 128, steps: 30000, thresh: 0.03, c1: 1, c2: 1, c3: 0.0003, c4: 1e-06, test_acc: 0.992188, test_loss: 0.173691

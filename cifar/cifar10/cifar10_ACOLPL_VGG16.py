@@ -58,6 +58,7 @@ tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
 tf.app.flags.DEFINE_float('keeprate', 0.5,
                             """The keeprate for the dropout layers.""")
+tf.app.flags.DEFINE_string('skipfile','data_batch_10perc_skip.bin','File to use when skipping input') #NOTE!!!
 
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
@@ -66,12 +67,13 @@ NUM_CLUSTERS = 6
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
+#skipfile = '' #NOTE!!!
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays. #350
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.0001       # Initial learning rate. 0.1 #NOTE
+INITIAL_LEARNING_RATE = 0.000001 #0.000001       # Initial learning rate. 0.1 #NOTE
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -79,8 +81,6 @@ INITIAL_LEARNING_RATE = 0.0001       # Initial learning rate. 0.1 #NOTE
 TOWER_NAME = 'tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
-
-batchsize = 128
 
 def _activation_summary(x):
   """Helper to create summaries for activations.
@@ -152,7 +152,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   return var
 
 
-def distorted_inputs():
+def distorted_inputs(part1 = False, fileappend = '.bin'):
   """Construct distorted input for CIFAR training using the Reader ops.
 
   Returns:
@@ -164,10 +164,17 @@ def distorted_inputs():
   """
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
+  skipfile = FLAGS.skipfile
+  if not part1:
+    skipfile = ''
+  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin/',skipfile) #NOTE!!
+  
+  #if len(skipfile)>0:    
+  #      print('!!!!!!!!!! Only reading single file! ' + skipfile)
+  #      data_dir = os.path.join(data_dir, skipfile)
 
   images, labels, superLabels  = cifar10_input.distorted_inputs(data_dir=data_dir,
-                                                  batch_size=FLAGS.batch_size,partially_labelled = True)
+                                                  batch_size=FLAGS.batch_size,partially_labelled = True,matrix_lab=True, f_append=fileappend)
 
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
@@ -176,7 +183,7 @@ def distorted_inputs():
   return images, labels, superLabels
 
 
-def inputs(eval_data, raw=False,batch=128):
+def inputs(eval_data, raw=False):
   """Construct input for CIFAR evaluation using the Reader ops.
 
   Args:
@@ -194,11 +201,11 @@ def inputs(eval_data, raw=False,batch=128):
   data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
   images, labels, superLabels = cifar10_input.inputs(eval_data=eval_data,
                                         data_dir=data_dir,
-                                        batch_size=batchsize,partially_labelled = True)
+                                        batch_size=FLAGS.batch_size,partially_labelled = True)
   if raw:
       images, img_raw, labels, superLabels = cifar10_input.inputs_raw(eval_data=eval_data,
                                         data_dir=data_dir,
-                                        batch_size=batch,partially_labelled = True)
+                                        batch_size=FLAGS.batch_size,partially_labelled = True)
   print(images)
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
@@ -211,7 +218,7 @@ def inputs(eval_data, raw=False,batch=128):
   return images, labels, superLabels
 
 
-def inference(images,batchS = 0, testKeep = 0):
+def inference(images,batchS = 0, testKeep = 0, contTraining = False):
   """Build the CIFAR-10 model.
 
   Args:
@@ -232,8 +239,11 @@ def inference(images,batchS = 0, testKeep = 0):
     batchsize = batchS
   if testKeep>0:
     keeprate = tf.constant(testKeep)
-    
-  vggbase = VGG16base.Vgg16('//code/vgg16.npy',conv_frozen=True)
+  
+  loadDir = '//code/vgg16.npy'
+  if contTraining: #If this is continueing from a previous run, do not load the numpy weights (?)
+    loadDir = None
+  vggbase = VGG16base.Vgg16(loadDir,conv_frozen=True)
  # with tf.name_scope("content_vgg"):
   vggbase.build(images)
   
@@ -329,12 +339,12 @@ def loss(smStacked, stackedClusts, softmaxMat, labels, superLabels):
   #affinity
   bZ = zBar(stackedClusts)#softmaxMat)
   bU = bigU(bZ)
-  coact = selectNonDiag(bU)
-  affinity = specialNormalise(bU)
+  coact = tf.identity(selectNonDiag(bU), name='coactivity')
+  affinity = tf.identity(specialNormalise(bU), name='affinity')
 
   #balance
   bV=bigV(bZ)
-  balance = specialNormalise(bV)
+  balance = tf.identity(specialNormalise(bV), name='balance')
   
   #labels = tf.one_hot(labels, 10, dtype='float32')
 
@@ -345,9 +355,9 @@ def loss(smStacked, stackedClusts, softmaxMat, labels, superLabels):
 
   superLabels = tf.one_hot(superLabels, NUM_CLASSES, dtype='float32')
   #cross entropy
-  cross_entropy = tf.reduce_mean(-tf.reduce_sum(superLabels * tf.log(tf.clip_by_value(smStacked,1e-10,1.0)), reduction_indices=[1]))
+  cross_entropy = tf.reduce_mean(-tf.reduce_sum(superLabels * tf.log(tf.clip_by_value(smStacked,1e-10,1.0)), reduction_indices=[1]), name='crossentropy')
 
-  clust_cross_entropy = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(tf.clip_by_value(softmaxMat,1e-10,1.0)), reduction_indices=[1,2]))  
+  clust_cross_entropy = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(tf.clip_by_value(softmaxMat,1e-10,1.0)), reduction_indices=[1,2]), name='clustcrossentropy')  
 
   tf.add_to_collection('losses', cross_entropy)
   tf.add_to_collection('losses', affinity)
@@ -355,14 +365,14 @@ def loss(smStacked, stackedClusts, softmaxMat, labels, superLabels):
   tf.add_to_collection('losses', c3(affinity)*coact)
   tf.add_to_collection('losses', clust_cross_entropy)
     
-  frob = frobNorm(stackedClusts)#softmaxMat)
+  frob = tf.identity(frobNorm(stackedClusts), name='frob')#softmaxMat)
   tf.add_to_collection('losses', c4*frob)
 
   loss = c0*cross_entropy + clust_cross_entropy + c1*affinity + c2*tf.subtract(tf.constant(1.0),balance) + c3(affinity)*coact + c4*frob
   #loss = c0*cross_entropy + clust_cross_entropy + c1*affinity + c2*tf.subtract(tf.constant(1.0),balance) + c3(affinity)*coact + c4*frob
-  #tf.add_to_collection('losses', loss)
+  #tf.add_to_collection('losses', loss, name='totalloss')
 
-
+  loss = tf.identity(loss,name='totallossvalue')
 
   # Calculate the average cross entropy loss across the batch.
   #labels = tf.cast(labels, tf.int64)
@@ -457,7 +467,7 @@ def train(total_loss, global_step):
   with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
     train_op = tf.no_op(name='train')
 
-  return train_op,lr
+  return train_op,lr, variable_averages.variables_to_restore()
 
 
 def maybe_download_and_extract():

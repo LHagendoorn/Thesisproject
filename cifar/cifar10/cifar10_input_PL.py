@@ -33,6 +33,9 @@ IMAGE_SIZE = 24
 NUM_CLASSES = 10
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
+classCount = 2
+clustCount = 6
+
 
 def read_cifar10(filename_queue,labswitch=1):
   """Reads and parses examples from CIFAR10 data files.
@@ -68,8 +71,11 @@ def read_cifar10(filename_queue,labswitch=1):
   result.height = 32
   result.width = 32
   result.depth = 3
+  
+  supLab =      tf.constant([0,0,1,1,1,1,1,1,0,0]) #Man mande vs animals
+  subclassLab = tf.constant([0,1,6,7,8,9,10,11,2,3])
   #['airplane','automobile','bird','cat','deer','dog','frog','horse', 'ship','truck']
-  supLab = tf.constant([0,1,0,3,4,3,5,4,5,1]) #adverserial encoding
+  #supLab = tf.constant([0,1,0,3,4,3,5,4,5,1]) #adverserial encoding
   image_bytes = result.height * result.width * result.depth
   # Every record consists of a label followed by the image, with a
   # fixed number of bytes for each.
@@ -92,7 +98,7 @@ def read_cifar10(filename_queue,labswitch=1):
       tf.strided_slice(record_bytes, [0], [labelled_bytes]), tf.int32)  
     
   result.superLabel = tf.cast(tf.gather(supLab,result.label), tf.int32)
-  #result.subclasslab = tf.cast(tf.gather(subclassLab,result.label), tf.int32)
+  result.subclasslab = tf.cast(tf.gather(subclassLab,result.label), tf.int32)
   #result.superLabel = result.label
     
   # The remaining bytes after the label represent the image, which we reshape
@@ -150,7 +156,7 @@ def _generate_image_and_label_batch(image, label,superLabel, min_queue_examples,
   # Display the training images in the visualizer.
   tf.summary.image('images', images)
 
-  return images, tf.reshape(label_batch, [batch_size]), tf.reshape(superLabel_batch, [batch_size])
+  return images, label_batch, tf.reshape(superLabel_batch, [batch_size])
 
 
 def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=True):
@@ -166,7 +172,7 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
   """
   if not data_dir[-4:] == '.bin':
     print(data_dir[-4:])
-    filenames = [os.path.join(data_dir, 'data_batch_%d_1perc.bin' % i)for i in xrange(1, 6)]
+    filenames = [os.path.join(data_dir, 'data_batch_%d_10perc.bin' % i)for i in xrange(1, 6)]
   else:
     filenames = [data_dir]
   for f in filenames:
@@ -304,10 +310,12 @@ def inputs_raw(eval_data, data_dir, batch_size):
     labels: Labels. 1D tensor of [batch_size] size.
   """
   if not eval_data:
+    labswitch = 1
     filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
                  for i in xrange(1, 6)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
   else:
+    labswitch = 0
     filenames = [os.path.join(data_dir, 'test_batch.bin')]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
@@ -319,7 +327,7 @@ def inputs_raw(eval_data, data_dir, batch_size):
   filename_queue = tf.train.string_input_producer(filenames)
 
   # Read examples from files in the filename queue.
-  read_input = read_cifar10(filename_queue)
+  read_input = read_cifar10(filename_queue, labswitch)
   reshaped_image = tf.cast(read_input.uint8image, tf.float32)
 
   height = IMAGE_SIZE

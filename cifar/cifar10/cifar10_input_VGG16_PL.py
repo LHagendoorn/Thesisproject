@@ -36,7 +36,8 @@ NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
 classCount = 2
 clustCount = 6
-
+fileappend = '_1perc.bin'
+fileappend = '.bin'
 #PERC = 0.1
 
 #t = np.zeros((11,2,6))
@@ -67,7 +68,7 @@ clustCount = 6
 
 VGG_MEAN = [103.939, 116.779, 123.68]
 
-def read_cifar10(filename_queue):
+def read_cifar10(filename_queue,switchbytes=0,superclassbytes=0): #NOTE
   """Reads and parses examples from CIFAR10 data files.
 
   Recommendation: if you want N-way read parallelism, call this function
@@ -97,7 +98,8 @@ def read_cifar10(filename_queue):
   # See http://www.cs.toronto.edu/~kriz/cifar.html for a description of the
   # input format.
   label_bytes = 1  # 2 for CIFAR-100
-  labelled_bytes = 1 #byte to switch the labels of with partially labelled learning
+  labelled_bytes = switchbytes #byte to switch the labels of with partially labelled learning
+  superclasslabel_bytes = superclassbytes
   result.height = 32
   result.width = 32
   result.depth = 3
@@ -107,12 +109,13 @@ def read_cifar10(filename_queue):
 # [ 6 7 8 9 10 11] superclass2
 
   supLab =      tf.constant([0,0,1,1,1,1,1,1,0,0]) #Man mande vs animals
-  subclassLab = tf.constant([0,1,6,7,8,9,10,11,2,3])
+  #subclassLab = tf.constant([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+  subclassLab = tf.constant([1,2,7,8,9,10,11,12,3,4])
   #supLab = tf.constant([0,0,1,1,1,1,1,0,0,0]) #Man mande+horse vs animals-horse
   image_bytes = result.height * result.width * result.depth
   # Every record consists of a label followed by the image, with a
   # fixed number of bytes for each.
-  record_bytes = label_bytes + image_bytes + labelled_bytes
+  record_bytes = label_bytes + image_bytes + labelled_bytes + superclasslabel_bytes
 
   # Read a record, getting filenames from the filename_queue.  No
   # header or footer in the CIFAR-10 format, so we leave header_bytes
@@ -126,20 +129,24 @@ def read_cifar10(filename_queue):
     
   # The first bytes represent the label, which we convert from uint8->int32.
   result.label = tf.cast(
-    tf.strided_slice(record_bytes, [labelled_bytes], [labelled_bytes+label_bytes]), tf.int32)
-  print(result.label)
+    tf.strided_slice(record_bytes, [superclasslabel_bytes+labelled_bytes], [superclasslabel_bytes+labelled_bytes+label_bytes]), tf.int32)
   result.switch = tf.cast(
-      tf.strided_slice(record_bytes, [0], [labelled_bytes]), tf.int32)  
-    
-  result.superLabel = tf.cast(tf.gather(supLab,result.label), tf.int32)
+      tf.strided_slice(record_bytes, [superclasslabel_bytes], [superclasslabel_bytes+labelled_bytes]), tf.int32)  
+  
+  if superclasslabel_bytes == 0:
+    result.superLabel = tf.cast(tf.gather(supLab,result.label), tf.int32)
+  else:
+    result.superLabel = tf.cast(
+      tf.strided_slice(record_bytes, [0], [superclasslabel_bytes]), tf.int32)  
+  
   result.subclasslab = tf.cast(tf.gather(subclassLab,result.label), tf.int32)
   #result.superLabel = result.label
     
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
   depth_major = tf.reshape(
-      tf.strided_slice(record_bytes, [label_bytes+labelled_bytes],
-                       [label_bytes + labelled_bytes + image_bytes]),
+      tf.strided_slice(record_bytes, [superclasslabel_bytes+label_bytes+labelled_bytes],
+                       [superclasslabel_bytes+label_bytes + labelled_bytes + image_bytes]),
       [result.depth, result.height, result.width])
   # Convert from [depth, height, width] to [height, width, depth].
   result.uint8image = tf.transpose(depth_major, [1, 2, 0])
@@ -195,7 +202,7 @@ def _generate_image_and_label_batch(image, label,superLabel, min_queue_examples,
   return images, label_batch, tf.reshape(superLabel_batch, [batch_size])
 
 
-def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=True):
+def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=True,f_append=fileappend):
   """Construct distorted input for CIFAR training using the Reader ops.
 
   Args:
@@ -208,9 +215,17 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
   """
   if not data_dir[-4:] == '.bin':
     print(data_dir[-4:])
-    filenames = [os.path.join(data_dir, 'data_batch_%d_1perc.bin' % i)for i in xrange(1, 6)]
+    filenames = [os.path.join(data_dir, 'data_batch_%d'%(i))
+                 for i in xrange(1, 6)]
+    filenames = [fname + f_append for fname in filenames]
   else:
     filenames = [data_dir]
+    f_append = filenames
+  
+  print('----- fileappend -------')
+  print(f_append)
+  print('------------------------')
+
   for f in filenames:
     if not tf.gfile.Exists(f):
       raise ValueError('Failed to find file: ' + f)
@@ -263,7 +278,7 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
   #    print(read_input.key)
       #read_input.label = lbl_lookup[tf.add(read_input.label,tf.constant(1))*read_input.switch]
       #Makes lbl positive when switch=1 and negative when switch=0, negative values are all zeros after one_hot
-      subclasslab_enc = tf.one_hot(read_input.subclasslab * (tf.constant(-1)+read_input.switch*tf.constant(2)), classCount*clustCount)
+      subclasslab_enc = tf.one_hot(read_input.subclasslab * (tf.constant(-1)+read_input.switch*tf.constant(2)) - tf.constant(1), classCount*clustCount)
       read_input.label = tf.reshape(subclasslab_enc,(classCount,clustCount))
     else:
       #read_input.label = tf.one_hot(read_input.label * (tf.constant(-1)+read_input.switch*tf.constant(2)), NUM_CLASSES)
@@ -289,7 +304,7 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
   return img, lbl, suplbl
 
 
-def inputs(eval_data, data_dir, batch_size,partially_labelled=False):
+def inputs(eval_data, data_dir, batch_size,partially_labelled=False,matrix_lab=False):
   """Construct input for CIFAR evaluation using the Reader ops.
 
   Args:
@@ -302,12 +317,15 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False):
     labels: Labels. 1D tensor of [batch_size] size.
   """
   if not eval_data:
-    filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
+    filenames = [os.path.join(data_dir, 'data_batch_%d'%(i))
                  for i in xrange(1, 6)]
+    filenames = [fname + fileappend for fname in filenames]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
+    switch = 1
   else:
-    filenames = [os.path.join(data_dir, 'test_batch.bin')]
+    filenames = [os.path.join(data_dir, 'test_batch' + fileappend)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
+    switch = 0
 
   for f in filenames:
     if not tf.gfile.Exists(f):
@@ -338,7 +356,7 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False):
   assert red.get_shape().as_list()[:] == [IMAGE_SIZE, IMAGE_SIZE, 1]
   assert green.get_shape().as_list()[:] == [IMAGE_SIZE, IMAGE_SIZE, 1]
   assert blue.get_shape().as_list()[:] == [IMAGE_SIZE, IMAGE_SIZE, 1]
-  bgr = tf.concat(axis=2, values=[
+  float_image = tf.concat(axis=2, values=[
       blue - VGG_MEAN[0],
       green - VGG_MEAN[1],
       red - VGG_MEAN[2],
@@ -350,7 +368,7 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False):
   #    print(read_input.key)
       #read_input.label = lbl_lookup[tf.add(read_input.label,tf.constant(1))*read_input.switch]
       #Makes lbl positive when switch=1 and negative when switch=0, negative values are all zeros after one_hot
-      subclasslab_enc = tf.one_hot(read_input.subclasslab * (tf.constant(-1)+read_input.switch*tf.constant(2)), classCount*clustCount)
+      subclasslab_enc = tf.one_hot(read_input.subclasslab * (tf.constant(-1)+read_input.switch*tf.constant(2)) - tf.constant(1), classCount*clustCount)
       read_input.label = tf.reshape(subclasslab_enc,(classCount,clustCount))
     else:
       #read_input.label = tf.one_hot(read_input.label * (tf.constant(-1)+read_input.switch*tf.constant(2)), NUM_CLASSES)
@@ -359,7 +377,7 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False):
 
   # Set the shapes of tensors.
   float_image.set_shape([height, width, 3])
-  #read_input.label.set_shape([1])
+  read_input.label.set_shape([1])
   read_input.superLabel.set_shape([1])
 
   print(read_input.label)
@@ -370,11 +388,11 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False):
                            min_fraction_of_examples_in_queue)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  return _generate_image_and_label_batch(bgr, read_input.label, read_input.superLabel,
+  return _generate_image_and_label_batch(float_image, read_input.label, read_input.superLabel,
                                          min_queue_examples, batch_size,
                                          shuffle=False)
 
-def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False):
+def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False, matrix_lab=False):
   """Construct input for CIFAR evaluation using the Reader ops.
 
   Args:
@@ -387,11 +405,11 @@ def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False):
     labels: Labels. 1D tensor of [batch_size] size.
   """
   if not eval_data:
-    filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
+    filenames = [os.path.join(data_dir, 'data_batch_%d'+fileappend % i)
                  for i in xrange(1, 6)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
   else:
-    filenames = [os.path.join(data_dir, 'test_batch.bin')]
+    filenames = [os.path.join(data_dir, 'test_batch' + fileappend)]
     num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
   for f in filenames:
@@ -431,9 +449,15 @@ def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False):
   
   #clear labels
   if partially_labelled:
-      print(read_input.key)
-      read_input.label = lbl_lookup[tf.add(read_input.label,tf.constant(1.0))*tf.gather_nd(KEEPLAB,read_input.key)]
-        
+    if matrix_lab:
+  #    print(read_input.key)
+      #read_input.label = lbl_lookup[tf.add(read_input.label,tf.constant(1))*read_input.switch]
+      #Makes lbl positive when switch=1 and negative when switch=0, negative values are all zeros after one_hot
+      subclasslab_enc = tf.one_hot(read_input.subclasslab * (tf.constant(-1)+read_input.switch*tf.constant(2)) - tf.constant(1), classCount*clustCount)
+      read_input.label = tf.reshape(subclasslab_enc,(classCount,clustCount))
+    else:
+      #read_input.label = tf.one_hot(read_input.label * (tf.constant(-1)+read_input.switch*tf.constant(2)), NUM_CLASSES)
+      read_input.label.set_shape([1])
 
   # Set the shapes of tensors.
   bgr.set_shape([height, width, 3])

@@ -48,7 +48,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', '/code/logs/cifar10_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 50000,
+tf.app.flags.DEFINE_integer('max_steps', 20000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
@@ -56,14 +56,16 @@ tf.app.flags.DEFINE_integer('log_frequency', 100,
                             """How often to log results to the console.""")
 
 
-def train():
+continueTraining = False #NOTE
+
+def train(datadir=''):
   """Train CIFAR-10 for a number of steps."""
   with tf.Graph().as_default():
     global_step = tf.contrib.framework.get_or_create_global_step()
 
     # Get images and labels for CIFAR-10.
     with tf.device('/cpu:0'):
-        images, labels = cifar10.distorted_inputs()
+        images, labels = cifar10.distorted_inputs(datadir)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
@@ -101,7 +103,8 @@ def train():
                         'sec/batch)')
           print (format_str % (datetime.now(), self._step, loss_value,
                                examples_per_sec, sec_per_batch))
-
+    
+    saver = tf.train.Saver()
     with tf.train.MonitoredTrainingSession(
         checkpoint_dir=FLAGS.train_dir,
         hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
@@ -109,16 +112,29 @@ def train():
                _LoggerHook()],
         config=tf.ConfigProto(
             log_device_placement=FLAGS.log_device_placement)) as mon_sess:
+        
+      if continueTraining:
+        ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+          # Restores from checkpoint
+          saver.restore(mon_sess, ckpt.model_checkpoint_path)
+          # Assuming model_checkpoint_path looks something like:
+          #   /my-favorite-path/cifar10_train/model.ckpt-0,
+          # extract global_step from it.
+          #mon_sess.run(global_step.assign(latest_step))  
+        
       while not mon_sess.should_stop():
         mon_sess.run(train_op)
 
 
-def main(argv=None):  # pylint: disable=unused-argument
+def main(datadir = '', argv=None):  # pylint: disable=unused-argument
   cifar10.maybe_download_and_extract()
-  if tf.gfile.Exists(FLAGS.train_dir):
-    tf.gfile.DeleteRecursively(FLAGS.train_dir)
-  tf.gfile.MakeDirs(FLAGS.train_dir)
-  train()
+  if not continueTraining:
+    if tf.gfile.Exists(FLAGS.train_dir):
+      tf.gfile.Rename(FLAGS.train_dir,FLAGS.train_dir+str(datetime.now()))
+    tf.gfile.MakeDirs(FLAGS.train_dir) 
+  print(datadir[1])
+  train(datadir[1])
 
 
 if __name__ == '__main__':

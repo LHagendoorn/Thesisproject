@@ -41,7 +41,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import cifar10_VGG16_kerasModel as cifar10
+import cifar10_VGG16_PL as cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -59,7 +59,7 @@ tf.app.flags.DEFINE_boolean('run_once', False,
                          """Whether to run eval only once.""")
 
 
-def eval_once(saver, summary_writer, top_k_op, summary_op):
+def eval_once(saver, summary_writer, top_k_op, top_k_op_super, summary_op):
   """Run Eval once.
 
   Args:
@@ -91,20 +91,26 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 
       num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
       true_count = 0  # Counts the number of correct predictions.
+      true_count_super = 0
       total_sample_count = num_iter * FLAGS.batch_size
       step = 0
       while step < num_iter and not coord.should_stop():
-        predictions = sess.run([top_k_op])
+        predictions, superpredictions = sess.run([top_k_op,top_k_op_super])
         true_count += np.sum(predictions)
+        true_count_super += np.sum(superpredictions)
         step += 1
 
       # Compute precision @ 1.
       precision = true_count / total_sample_count
       print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
-
+        
+      superprecision = true_count_super / total_sample_count
+      print('%s: precision @ 1 = %.3f' % (datetime.now(), superprecision))
+   
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
       summary.value.add(tag='Precision @ 1', simple_value=precision)
+      summary.value.add(tag='SuperPrecision @ 1', simple_value=superprecision)
       summary_writer.add_summary(summary, global_step)
     except Exception as e:  # pylint: disable=broad-except
       coord.request_stop(e)
@@ -117,16 +123,28 @@ def evaluate():
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
+    supLab = tf.constant([0,0,1,1,1,1,1,1,0,0]) #Man mande vs animals #NOTE
     eval_data = FLAGS.eval_data == 'test'
-    images, labels = cifar10.inputs(eval_data=eval_data)
+    images, labels,superLabels = cifar10.inputs(eval_data=eval_data)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
     probs,logits = cifar10.inference(images)
-
+    
+    print('!!')
+    print(probs)
+    print(tf.cast(tf.arg_max(probs,dimension=1),tf.int32))
+    print(labels)
+    print(superLabels)
+    print(tf.reduce_max(probs,axis=1))
+    superlogits = tf.one_hot(tf.gather(supLab,tf.cast(tf.arg_max(probs,dimension=1),tf.int32)),2,dtype=tf.float32)
+    
+    print(superlogits)
+    
     # Calculate predictions.
-    top_k_op = tf.nn.in_top_k(logits, labels, 1)
-
+    top_k_op = tf.nn.in_top_k(logits, tf.squeeze(labels), 1)
+    top_k_op_super = tf.nn.in_top_k(superlogits, tf.squeeze(superLabels), 1)
+    
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
         cifar10.MOVING_AVERAGE_DECAY)
@@ -139,7 +157,8 @@ def evaluate():
     summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op)
+      print(superLabels)
+      eval_once(saver, summary_writer, top_k_op, top_k_op_super, summary_op)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)

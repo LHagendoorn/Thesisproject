@@ -48,27 +48,36 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', '/code/logs/cifar10_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 50000,
+tf.app.flags.DEFINE_integer('max_steps', 30000,
                             """Number of batches to run.""") #1000000
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 tf.app.flags.DEFINE_integer('log_frequency', 100,
                             """How often to log results to the console.""")
 
+continueTraining = False #NOTE
+
 #losshist = []
 
-def train():
+def train(fileappend = '.bin'):
   """Train CIFAR-10 for a number of steps."""
-  with tf.Graph().as_default():
-    global_step = tf.contrib.framework.get_or_create_global_step()
+  with tf.Graph().as_default():        
+    latest_step = tf.contrib.framework.get_or_create_global_step()
+    print('--------------')
+    print(latest_step)
+    
+    #if continueTraining:
+    #    ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)    
+    #    latest_step = tf.Variable(int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]),dtype=tf.float32)
+    #    print(latest_step)
     
     # Get images and labels for CIFAR-10.
     with tf.device('/cpu:0'):
-        images, labels, superLabels = cifar10.distorted_inputs()
+        images, labels, superLabels = cifar10.distorted_inputs(part1=True,fileappend=fileappend)#NOTE
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
-    smStacked, stackedClusts,softmaxMat = cifar10.inference(images)
+    smStacked, stackedClusts,softmaxMat = cifar10.inference(images,contTraining = continueTraining)
 
     # Calculate loss.
     #loss, balance, affinity, coact = cifar10.loss(smStacked, stackedClusts, softmaxMat, labels, superLabels)
@@ -76,7 +85,7 @@ def train():
 
     # Build a Graph that trains the model with one batch of examples and
     # updates the model parameters.
-    train_op,lr = cifar10.train(loss, global_step)
+    train_op,lr, varsToStore = cifar10.train(loss, latest_step)
 
     class _LoggerHook(tf.train.SessionRunHook):
       """Logs loss and runtime."""
@@ -107,7 +116,7 @@ def train():
           print (format_str % (datetime.now(), self._step, loss_value,1-balance_value,affinity_value,coact_value,
                                examples_per_sec, sec_per_batch))
           #losshist.append(loss)
-          print(run_values.results[4])
+    saver = tf.train.Saver(varsToStore)
     with tf.train.MonitoredTrainingSession(
         checkpoint_dir=FLAGS.train_dir,
         hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
@@ -115,16 +124,29 @@ def train():
                _LoggerHook()],
         config=tf.ConfigProto(
             log_device_placement=FLAGS.log_device_placement)) as mon_sess:
+      
+      if continueTraining:
+        ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+          # Restores from checkpoint
+          saver.restore(mon_sess, ckpt.model_checkpoint_path)
+          # Assuming model_checkpoint_path looks something like:
+          #   /my-favorite-path/cifar10_train/model.ckpt-0,
+          # extract global_step from it.
+          #mon_sess.run(global_step.assign(latest_step))
+        
       while not mon_sess.should_stop():
         mon_sess.run(train_op)
 
-
-def main(argv=None):  # pylint: disable=unused-argument
+def main(fileappend = '.bin', argv=None):  # pylint: disable=unused-argument
   cifar10.maybe_download_and_extract()
-  if tf.gfile.Exists(FLAGS.train_dir):
-    tf.gfile.Rename(FLAGS.train_dir,FLAGS.train_dir+str(datetime.now()))
-  tf.gfile.MakeDirs(FLAGS.train_dir) 
-  train()
+
+  if not continueTraining:
+    if tf.gfile.Exists(FLAGS.train_dir):
+      tf.gfile.Rename(FLAGS.train_dir,FLAGS.train_dir+str(datetime.now()))
+    tf.gfile.MakeDirs(FLAGS.train_dir) 
+  print('Training with: '+ fileappend[1]) #for some reason the path is also in this var
+  train(fileappend[1])
   #with open(FLAGS.train_dir + '/losshist.txt','wb') as f:
     #for l in losshist:
     #    f.write(l)
