@@ -39,38 +39,39 @@ import os
 import re
 import sys
 import tarfile
+import numpy as np
 
 from six.moves import urllib
 import tensorflow as tf
-import numpy as np
 
-import cifar10_input
+import cifar10_input_VGG16_PL as cifar10_input
+import VGG16base
 
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 128,
+tf.app.flags.DEFINE_integer('batch_size', 48,
                             """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/code/logs/cifar10_data',
+tf.app.flags.DEFINE_string('data_dir', '//code/logs/cifar10_data',
                            """Path to the CIFAR-10 data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
 tf.app.flags.DEFINE_float('keeprate', 0.5,
                             """The keeprate for the dropout layers.""")
 
+
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
-NUM_CLASSES = 5 #cifar10_input.NUM_CLASSES
-NUM_CLUSTERS = 2
+NUM_CLASSES = cifar10_input.NUM_CLASSES
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays. #350
+NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.0001       # Initial learning rate. 0.1 #NOTE
+INITIAL_LEARNING_RATE = 0.00001       # Initial learning rate.
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -79,7 +80,9 @@ TOWER_NAME = 'tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
-batchsize = 64
+data_dict = np.load('//code/vgg16.npy', encoding='latin1').item()
+trainable=True
+var_dict = {}
 
 def _activation_summary(x):
   """Helper to create summaries for activations.
@@ -94,17 +97,10 @@ def _activation_summary(x):
   """
   # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
   # session. This helps the clarity of presentation on tensorboard.
-  if not type(x)==list:
-    tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
-    tf.summary.histogram(tensor_name + '/activations', x)
-    tf.summary.scalar(tensor_name + '/sparsity',
+  tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
+  tf.summary.histogram(tensor_name + '/activations', x)
+  tf.summary.scalar(tensor_name + '/sparsity',
                                        tf.nn.zero_fraction(x))
-  else:
-    for item in x:
-      tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', item.op.name)
-      tf.summary.histogram(tensor_name + '/activations', item)
-      tf.summary.scalar(tensor_name + '/sparsity',
-                                       tf.nn.zero_fraction(item))
 
 
 def _variable_on_cpu(name, shape, initializer):
@@ -151,7 +147,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   return var
 
 
-def distorted_inputs():
+def distorted_inputs(d_dir = ''):
   """Construct distorted input for CIFAR training using the Reader ops.
 
   Returns:
@@ -163,20 +159,24 @@ def distorted_inputs():
   """
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
-  images, labels, superLabels = cifar10_input.distorted_inputs(data_dir=data_dir,
-                                                  batch_size=FLAGS.batch_size)
+  if d_dir is not '':
+      data_dir = os.path.join(FLAGS.data_dir, d_dir) #NOTE!!
+      print('----- data dir -------')
+      print(data_dir)
+      print('----------------------')
+            
+  images, labels, _ = cifar10_input.distorted_inputs(data_dir=data_dir,
+                                                  batch_size=FLAGS.batch_size,partially_labelled=True,matrix_lab=False)
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)
-    superLabels = tf.cast(superLabels, tf.float16)
-  return images, labels, superLabels
+  return images, labels
 
 
-def inputs(eval_data, raw=False,batch=128):
+def inputs(eval_data,raw=False):
   """Construct input for CIFAR evaluation using the Reader ops.
-
-  Args:
+    
+      Args:
     eval_data: bool, indicating if one should use the train or eval data set.
 
   Returns:
@@ -189,13 +189,16 @@ def inputs(eval_data, raw=False,batch=128):
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
   data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
-  images, labels, superLabels = cifar10_input.inputs(eval_data=eval_data,
-                                        data_dir=data_dir,
-                                        batch_size=batchsize)
+ 
   if raw:
       images, img_raw, labels, superLabels = cifar10_input.inputs_raw(eval_data=eval_data,
                                         data_dir=data_dir,
-                                        batch_size=batch)
+                                        batch_size=FLAGS.batch_size)
+  else:
+    images, labels, superLabels = cifar10_input.inputs(eval_data=eval_data,
+                                        data_dir=data_dir,
+                                        batch_size=FLAGS.batch_size)
+  
   print(images)
   if FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
@@ -204,9 +207,70 @@ def inputs(eval_data, raw=False,batch=128):
   
   if raw:
     return images, img_raw, labels, superLabels
-
   return images, labels, superLabels
 
+
+def avg_pool(bottom, name):
+    return tf.nn.avg_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
+
+def max_pool(bottom, name):
+    return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
+
+def conv_layer(bottom, in_channels, out_channels, name):
+    with tf.variable_scope(name):
+        filt, conv_biases = get_conv_var(3, in_channels, out_channels, name)
+
+        conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
+        bias = tf.nn.bias_add(conv, conv_biases)
+        relu = tf.nn.relu(bias)
+        
+        return relu
+
+def fc_layer(bottom, in_size, out_size, name):
+    with tf.variable_scope(name):
+        weights, biases = get_fc_var(in_size, out_size, name)
+
+        x = tf.reshape(bottom, [-1, in_size])
+        fc = tf.nn.bias_add(tf.matmul(x, weights), biases)
+
+        return fc
+        
+def get_conv_var(filter_size, in_channels, out_channels, name):
+    initial_value = tf.truncated_normal([filter_size, filter_size, in_channels, out_channels], 0.0, 0.001)
+    filters = get_var(initial_value, name, 0, name + "_filters")
+
+    initial_value = tf.truncated_normal([out_channels], .0, .001)
+    biases = get_var(initial_value, name, 1, name + "_biases")
+
+    return filters, biases
+
+def get_fc_var(in_size, out_size, name):
+    initial_value = tf.truncated_normal([in_size, out_size], 0.0, 0.001)
+    weights = get_var(initial_value, name, 0, name + "_weights")
+    
+    initial_value = tf.truncated_normal([out_size], .0, .001)
+    biases = get_var(initial_value, name, 1, name + "_biases")
+    
+    return weights, biases
+
+def get_var(initial_value, name, idx, var_name):
+    if data_dict is not None and name in data_dict:
+        value = data_dict[name][idx]
+    else:
+        value = initial_value
+                
+    if trainable:
+        var = tf.Variable(value, name=var_name)
+    else:
+        var = tf.constant(value, dtype=tf.float32, name=var_name)
+
+    var_dict[(name, idx)] = var
+
+    print(var_name, var.get_shape().as_list())
+    print(initial_value.get_shape())
+    assert var.get_shape() == initial_value.get_shape()
+
+    return var
 
 def inference(images,batchS = 0, testKeep = 0):
   """Build the CIFAR-10 model.
@@ -229,95 +293,33 @@ def inference(images,batchS = 0, testKeep = 0):
     batchsize = batchS
   if testKeep>0:
     keeprate = tf.constant(testKeep)
+  print('images:')
+  print(images)
     
-  vggbase = VGG16base.Vgg16('//code/vgg16.npy')
+  vggbase = VGG16base.Vgg16('//code/vgg16.npy',conv_frozen=True)
  # with tf.name_scope("content_vgg"):
   vggbase.build(images)
-
-  # local3
-  with tf.variable_scope('local3') as scope:
-    # Move everything into depth so we can perform a single matrix multiply.
-    reshape = tf.reshape(vggbase.pool5, [batchsize, -1])
-    dim = reshape.get_shape()[1].value
-    weights = _variable_with_weight_decay('weights', shape=[dim, 4069],
-                                          stddev=0.04, wd=0.004)
-    biases = _variable_on_cpu('biases', [4069], tf.constant_initializer(0.1))
-    local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
-    _activation_summary(local3)
-
-  l_fc1_drop = tf.nn.dropout(local3, keeprate)
     
-  # local4
-  with tf.variable_scope('local4') as scope:
-    weights = _variable_with_weight_decay('weights', shape=[4069, 192],
-                                          stddev=0.04, wd=0.004)
-    biases = _variable_on_cpu('biases', [4069], tf.constant_initializer(0.1))
-    local4 = tf.nn.relu(tf.matmul(l_fc1_drop, weights) + biases, name=scope.name)
-    _activation_summary(local4)
-
-  l_fc2_drop = tf.nn.dropout(local4, keeprate)
     
-  with tf.variable_scope('l_acol') as scope:
-    acolLayers = []
-    for i in range(NUM_CLASSES):
-        acolLayers.append([
-            _variable_with_weight_decay('weights'+str(i), shape=[4069, NUM_CLUSTERS],
-                                          stddev=0.04, wd=0.004),
-            _variable_on_cpu('biases'+str(i),[NUM_CLUSTERS],tf.constant_initializer(0.1))
-        ])
-    clust = []
-    for l in range(0,len(acolLayers)):
-        clust.append(tf.matmul(l_fc2_drop, acolLayers[l][0]) + acolLayers[l][1])
-    _activation_summary(clust)
+  #print(vggbase.pool5)
+    
+  dropout1 = tf.nn.dropout(vggbase.relu7, keeprate)
+ 
+  #dropout1 = fc_layer(images,32*32*3,2048,'sillybridge')
+    
+  #fcsecondtolast = fc_layer(dropout1,2048, 4096, "fcsecondtolast")
+  #print(fcsecondtolast.get_shape().as_list()[1:])# == [4096]
+  #relu6 = tf.nn.relu(fcsecondtolast)
 
-  stackedClusts = tf.stack(clust,1)
-        
-  #Classification layer
+  #dropout2 = tf.nn.dropout(relu6, keeprate)
   
-  softmaxMat = matrix_softmax(stackedClusts)
-  smStacked = tf.reduce_max(softmaxMat,2)
+  fcfinal = fc_layer(dropout1,4096,10, "fcfinal")
+  prob = tf.nn.softmax(fcfinal, name="prob")
 
-  # linear layer(WX + b),
-  # We don't apply softmax here because
-  # tf.nn.sparse_softmax_cross_entropy_with_logits accepts the unscaled logits
-  # and performs the softmax internally for efficiency.
-  with tf.variable_scope('softmax_linear') as scope:
-    weights = _variable_with_weight_decay('weights', [4069, NUM_CLASSES],
-                                          stddev=1/192.0, wd=0.0)
-    biases = _variable_on_cpu('biases', [NUM_CLASSES],
-                              tf.constant_initializer(0.0))
-    softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
-    _activation_summary(softmax_linear)
+  return prob, fcfinal, vggbase.relu7
 
-  return smStacked, stackedClusts, softmaxMat
 
-#helper loss funcs
-def zBar(x):
-    xshape = x.shape.as_list()
-    s=[-1,xshape[1]*xshape[2]]
-    return tf.maximum(tf.reshape(x,s),0)
-    
-def bigU(zb):
-    return tf.matmul(tf.transpose(zb),zb)
-
-def selectNonDiag(x):
-    selection = np.ones(x.shape.as_list()[0],dtype='float32') - np.eye(x.shape.as_list()[0],dtype='float32')
-    return tf.reduce_sum(tf.multiply(x,selection))
-
-def bigV(x):
-    smallNu=tf.reshape(tf.reduce_sum(x,axis=0),[1,-1])
-    return tf.multiply(tf.transpose(smallNu),smallNu)
-
-def specialNormalise(x):
-    top = selectNonDiag(x)
-    bottom = tf.multiply(tf.to_float(x.shape[1]-1),tf.reduce_sum(tf.multiply(x,np.eye(x.shape[1],dtype='float32'))))
-    return tf.divide(top,bottom)
-
-def frobNorm(x):
-    return tf.sqrt(tf.reduce_sum(tf.square(x)))
-
-#def loss(smStacked, stackedClusts, softmaxMat, labels, superLabels):
-def loss(smStacked, stackedClusts, labels, superLabels):
+def loss(logits, labels):
   """Add L2Loss to all the trainable variables.
 
   Add summary for "Loss" and "Loss/avg".
@@ -329,68 +331,18 @@ def loss(smStacked, stackedClusts, labels, superLabels):
   Returns:
     Loss tensor of type float.
   """
-
-  tresh = tf.constant(0.04)
-  cc0=1.0
-  cc1=1.0
-  cc2=1.0
-  cc3=0.0003
-  cc4=0.000001
-  c0 = tf.constant(cc0)
-  c1 = tf.constant(cc1)
-  c2 = tf.constant(cc2)
-  c3val = tf.constant(cc3)
-  c3 = lambda affinity: tf.cond(tf.less(affinity,tresh),lambda: c3val,lambda: tf.constant(0.0))
-  c4 =tf.constant(cc4)#0.000001)
-
-  #calculate losses
-  #affinity
-  bZ = zBar(stackedClusts)#softmaxMat)
-  bU = bigU(bZ)
-  coact = selectNonDiag(bU)
-  affinity = specialNormalise(bU)
-
-  #balance
-  bV=bigV(bZ)
-  balance = specialNormalise(bV)
-  
-  labels = tf.one_hot(labels, 10, dtype='float32')
-
-  #supLab = tf.constant([0,0,1,1,1,1,1,1,0,0])    
-  #superLabels = tf.gather(supLab,superLabels)
-  
-  supbackup = superLabels
-
-  superLabels = tf.one_hot(superLabels, NUM_CLASSES, dtype='float32')
-  #cross entropy
-  cross_entropy = tf.reduce_mean(-tf.reduce_sum(superLabels * tf.log(tf.clip_by_value(smStacked,1e-10,1.0)), reduction_indices=[1]))
-
-  #clust_cross_entropy = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(tf.clip_by_value(softmaxMat,1e-10,1.0)), reduction_indices=[1,2]))  
-
-  tf.add_to_collection('losses', cross_entropy)
-  tf.add_to_collection('losses', affinity)
-  tf.add_to_collection('losses', c2*tf.subtract(tf.constant(1.0),balance))
-  tf.add_to_collection('losses', c3(affinity)*coact)
-    
-  frob = frobNorm(stackedClusts)#softmaxMat)
-  tf.add_to_collection('losses', c4*frob)
-
-  loss = c0*cross_entropy + c1*affinity + c2*tf.subtract(tf.constant(1.0),balance) + c3(affinity)*coact + c4*frob
-  #loss = c0*cross_entropy + clust_cross_entropy + c1*affinity + c2*tf.subtract(tf.constant(1.0),balance) + c3(affinity)*coact + c4*frob
-  #tf.add_to_collection('losses', loss)
-
-
-
   # Calculate the average cross entropy loss across the batch.
-  #labels = tf.cast(labels, tf.int64)
-  #cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-  #    labels=labels, logits=logits, name='cross_entropy_per_example')
-  #cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
-  #tf.add_to_collection('losses', cross_entropy_mean)
+  labels = tf.squeeze(tf.cast(labels, tf.int64))
+  #print(labels)
+  #print(logits)
+  cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+      labels=labels, logits=logits, name='cross_entropy_per_example')
+  cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+  tf.add_to_collection('losses', cross_entropy_mean)
 
   # The total loss is defined as the cross entropy loss plus all of the weight
   # decay terms (L2 loss).
-  return loss, balance, affinity, coact
+  return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
 def _add_loss_summaries(total_loss):
@@ -450,8 +402,7 @@ def train(total_loss, global_step):
 
   # Compute gradients.
   with tf.control_dependencies([loss_averages_op]):
-    opt = tf.train.AdamOptimizer(lr)
-    #opt = tf.train.GradientDescentOptimizer(lr)
+    opt = tf.train.GradientDescentOptimizer(lr)
     grads = opt.compute_gradients(total_loss)
 
   # Apply gradients.
@@ -474,7 +425,7 @@ def train(total_loss, global_step):
   with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
     train_op = tf.no_op(name='train')
 
-  return train_op,lr
+  return train_op
 
 
 def maybe_download_and_extract():
@@ -497,42 +448,3 @@ def maybe_download_and_extract():
   if not os.path.exists(extracted_dir_path):
     tarfile.open(filepath, 'r:gz').extractall(dest_directory)
     
-    
-    
-#helper funcs
-def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial)
-
-def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial)
-
-def conv2d(x,W):
-    return tf.nn.conv2d(x,W,strides=[1,1,1,1], padding='SAME')
-
-def max_pool_2x2(x):
-    return tf.nn.max_pool(x, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-def matrix_softmax(x):
-    shape = x.get_shape().as_list()
-    shape[0] = int(-1)
-    return tf.reshape(tf.nn.softmax(tf.contrib.layers.flatten(x)),shape)
-
-def avg_softmax(x):
-    shape = x.get_shape().as_list()
-    shape[0] = int(-1)
-    totalSoft = tf.reshape(tf.nn.softmax(tf.contrib.layers.flatten(x)),shape)
-    return tf.reduce_sum(totalSoft,2)
-
-def max_softmax(x):
-    shape = x.get_shape().as_list()
-    shape[0] = int(-1)
-    totalSoft = tf.reshape(tf.nn.softmax(tf.contrib.layers.flatten(x)),shape)
-    return tf.reduce_max(totalSoft,2)
-        
-def connectACOL(inLayer,acol):
-    clust = []
-    for l in range(0,len(acol)):
-        clust.append(tf.matmul(inLayer, acol[l][0]) + acol[l][1])
-    return clust

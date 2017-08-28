@@ -36,7 +36,12 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
 classCount = 2
 clustCount = 6
 
+""" function read_cifar10
+filename_queue: files to read
+labswitch: 1 when reading which images should be lablleled in the file, 0 otherwise
 
+If you get an error complaining about the gather that the labels are too high a number, this should probably be changed.
+"""
 def read_cifar10(filename_queue,labswitch=1):
   """Reads and parses examples from CIFAR10 data files.
 
@@ -112,22 +117,20 @@ def read_cifar10(filename_queue,labswitch=1):
   return result
 
 
+""" function _generate_image_and_label_batch
+image: 3-D Tensor of [height, width, 3] of type.float32.
+label: 1-D Tensor of type.int32
+superLabel: 1-D Tensor of type.int32
+min_queue_examples: int32, minimum number of samples to retain in the queue that provides of batches of examples.
+batch_size: Number of images per batch.
+shuffle: boolean indicating whether to use a shuffling queue.
+raw: boolean whether or not to also return the raw image (without scaled colours and such)
+raw_image: the raw image tensor
+
+Construct a queued batch of images and labels.
+"""
 def _generate_image_and_label_batch(image, label,superLabel, min_queue_examples,
                                     batch_size, shuffle, raw = False, raw_image = None):
-  """Construct a queued batch of images and labels.
-
-  Args:
-    image: 3-D Tensor of [height, width, 3] of type.float32.
-    label: 1-D Tensor of type.int32
-    min_queue_examples: int32, minimum number of samples to retain
-      in the queue that provides of batches of examples.
-    batch_size: Number of images per batch.
-    shuffle: boolean indicating whether to use a shuffling queue.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, height, width, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   # Create a queue that shuffles the examples, and then
   # read 'batch_size' images + labels from the example queue.
   num_preprocess_threads = 16
@@ -158,18 +161,15 @@ def _generate_image_and_label_batch(image, label,superLabel, min_queue_examples,
 
   return images, label_batch, tf.reshape(superLabel_batch, [batch_size])
 
+""" funnction distorted_inputs
+data_dir: Path to the CIFAR-10 data directory.
+batch_size: Number of images per batch.
+partially_labelled: Boolean indicating use of partial labels
+matrix_lab: Boolean indicating if the labels should be 2D (for subclasses in ACOL)
 
+Construct distorted input for CIFAR training using the Reader ops.
+"""
 def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=True):
-  """Construct distorted input for CIFAR training using the Reader ops.
-
-  Args:
-    data_dir: Path to the CIFAR-10 data directory.
-    batch_size: Number of images per batch.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   if not data_dir[-4:] == '.bin':
     print(data_dir[-4:])
     filenames = [os.path.join(data_dir, 'data_batch_%d_10perc.bin' % i)for i in xrange(1, 6)]
@@ -237,19 +237,16 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
                                          min_queue_examples, batch_size,
                                          shuffle=True)
 
+""" funnction inputs
+eval_data: bool, indicating if one should use the train or eval data set.
+data_dir: Path to the CIFAR-10 data directory.
+batch_size: Number of images per batch.
+partially_labelled: Boolean indicating use of partial labels
+matrix_lab: Boolean indicating if the labels should be 2D (for subclasses in ACOL)
 
+Construct input for CIFAR evaluation using the Reader ops.
+"""
 def inputs(eval_data, data_dir, batch_size):
-  """Construct input for CIFAR evaluation using the Reader ops.
-
-  Args:
-    eval_data: bool, indicating if one should use the train or eval data set.
-    data_dir: Path to the CIFAR-10 data directory.
-    batch_size: Number of images per batch.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   if not eval_data:
     labswitch = 1
     filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
@@ -296,19 +293,14 @@ def inputs(eval_data, data_dir, batch_size):
   return _generate_image_and_label_batch(float_image, read_input.label, read_input.superLabel,
                                          min_queue_examples, batch_size,
                                          shuffle=False)
+""" funnction inputs_raw
+eval_data: bool, indicating if one should use the train or eval data set.
+data_dir: Path to the CIFAR-10 data directory.
+batch_size: Number of images per batch.
 
+Construct input for CIFAR evaluation using the Reader ops, includes the raw images
+"""
 def inputs_raw(eval_data, data_dir, batch_size):
-  """Construct input for CIFAR evaluation using the Reader ops.
-
-  Args:
-    eval_data: bool, indicating if one should use the train or eval data set.
-    data_dir: Path to the CIFAR-10 data directory.
-    batch_size: Number of images per batch.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   if not eval_data:
     labswitch = 1
     filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)

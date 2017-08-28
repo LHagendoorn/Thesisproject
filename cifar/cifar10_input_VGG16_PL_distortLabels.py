@@ -34,10 +34,13 @@ IMAGE_SIZE = 224
 NUM_CLASSES = 10
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
-classCount = 2
-clustCount = 6
-fileappend = '_1perc.bin'
-fileappend = '.bin'
+classCount = 8
+clustCount = 10
+#fileappend = '_1perc.bin'
+#fileappend = '.bin'
+fileappend = '_blueness_super.bin'
+#fileappend = '_plain_blueness_super.bin'
+#fileappend = 'if it uses this is will crash so I will notice'
 #PERC = 0.1
 
 #t = np.zeros((11,2,6))
@@ -68,7 +71,14 @@ fileappend = '.bin'
 
 VGG_MEAN = [103.939, 116.779, 123.68]
 
-def read_cifar10(filename_queue,switchbytes=0,superclassbytes=0): #NOTE
+""" function read_cifar10
+filename_queue: files to read
+switchbytes: 1 when reading which images should be lablleled in the file, 0 otherwise
+superclassbytes: 1 when reading superclass for each image in the file, 0 otherwise
+
+If you get an error complaining about the gather that the labels are too high a number, this should probably be changed.
+"""
+def read_cifar10(filename_queue,switchbytes=1,superclassbytes=1): #NOTE
   """Reads and parses examples from CIFAR10 data files.
 
   Recommendation: if you want N-way read parallelism, call this function
@@ -92,8 +102,8 @@ def read_cifar10(filename_queue,switchbytes=0,superclassbytes=0): #NOTE
 
   class CIFAR10Record(object):
     pass
-  result = CIFAR10Record()
-
+  result = CIFAR10Record()  
+    
   # Dimensions of the images in the CIFAR-10 dataset.
   # See http://www.cs.toronto.edu/~kriz/cifar.html for a description of the
   # input format.
@@ -154,22 +164,20 @@ def read_cifar10(filename_queue,switchbytes=0,superclassbytes=0): #NOTE
   return result
 
 
+""" function _generate_image_and_label_batch
+image: 3-D Tensor of [height, width, 3] of type.float32.
+label: 1-D Tensor of type.int32
+superLabel: 1-D Tensor of type.int32
+min_queue_examples: int32, minimum number of samples to retain in the queue that provides of batches of examples.
+batch_size: Number of images per batch.
+shuffle: boolean indicating whether to use a shuffling queue.
+raw: boolean whether or not to also return the raw image (without scaled colours and such)
+raw_image: the raw image tensor
+
+Construct a queued batch of images and labels.
+"""
 def _generate_image_and_label_batch(image, label,superLabel, min_queue_examples,
                                     batch_size, shuffle, raw = False, raw_image = None):
-  """Construct a queued batch of images and labels.
-
-  Args:
-    image: 3-D Tensor of [height, width, 3] of type.float32.
-    label: 1-D Tensor of type.int32
-    min_queue_examples: int32, minimum number of samples to retain
-      in the queue that provides of batches of examples.
-    batch_size: Number of images per batch.
-    shuffle: boolean indicating whether to use a shuffling queue.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, height, width, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   # Create a queue that shuffles the examples, and then
   # read 'batch_size' images + labels from the example queue.
   num_preprocess_threads = 16
@@ -201,18 +209,104 @@ def _generate_image_and_label_batch(image, label,superLabel, min_queue_examples,
   print(label_batch)
   return images, label_batch, tf.reshape(superLabel_batch, [batch_size])
 
+"""
+This did not work
+"""
+def image_distortions(image, distortions):
+    distort_left_right_random = distortions[0]
+    distort_up_down_random = distortions[1]
+    distort_rotate_90 = distortions[2]
 
+    mirror_lr_cond = tf.less(distort_left_right_random, .5)
+    image = tf.cond(mirror_lr_cond,
+                     lambda: tf.reverse(image, [1]),
+                     lambda: image)
+    
+    mirror_ud_cond = tf.less(distort_up_down_random, .5)
+    image = tf.cond(mirror_ud_cond,
+                     lambda: tf.reverse(image, [2]),
+                     lambda: image)
+    
+    mirror_r_cond = tf.less(distort_up_down_random, .5)
+    image = tf.cond(mirror_r_cond,
+                     lambda: tf.contrib.image.rotate(image, 90),
+                     lambda: image)
+    
+    lbl1 = tf.logical_and(tf.logical_and(mirror_lr_cond,tf.logical_not(mirror_ud_cond)),tf.logical_not(mirror_r_cond))
+    lbl2 = tf.logical_and(tf.logical_and(tf.logical_not(mirror_lr_cond),mirror_ud_cond),tf.logical_not(mirror_r_cond))
+    lbl3 = tf.logical_and(tf.logical_and(mirror_lr_cond,mirror_ud_cond),tf.logical_not(mirror_r_cond))
+    lbl4 = tf.logical_and(tf.logical_and(tf.logical_not(mirror_lr_cond),tf.logical_not(mirror_ud_cond)),mirror_r_cond)
+    lbl5 = tf.logical_and(tf.logical_and(tf.logical_not(mirror_lr_cond),mirror_ud_cond),mirror_r_cond)
+    lbl6 = tf.logical_and(tf.logical_and(mirror_lr_cond,tf.logical_not(mirror_ud_cond)),mirror_r_cond)
+    lbl7 = tf.logical_and(tf.logical_and(mirror_lr_cond,mirror_ud_cond),mirror_r_cond)
+    
+    lbl=tf.Variable([0],trainable=False,name='transformation_label')
+    
+    def update_x_1():
+      ass = tf.assign(lbl, [1])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    def update_x_2():
+      ass = tf.assign(lbl, [2])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    def update_x_3():
+      ass = tf.assign(lbl, [3])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    def update_x_4():
+      ass = tf.assign(lbl, [4])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    def update_x_5():
+      ass = tf.assign(lbl, [5])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    def update_x_6():
+      ass = tf.assign(lbl, [6])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    def update_x_7():
+      ass = tf.assign(lbl, [7])
+      with tf.control_dependencies([ass]):
+        return tf.identity(lbl)
+    
+    #def update_x(newval):
+    #  with tf.control_dependencies([lbl.assign(newval)]):
+    #    return tf.identity(lbl)
+    tf.cond(lbl1,
+             update_x_1,
+             lambda:tf.identity(lbl))
+    tf.cond(lbl2,
+            update_x_2,
+            lambda:tf.identity(lbl))
+    tf.cond(lbl3,
+            update_x_3,
+            lambda:tf.identity(lbl))
+    tf.cond(lbl4,
+            update_x_4,
+            lambda:tf.identity(lbl))
+    tf.cond(lbl5,
+            update_x_5,
+            lambda:tf.identity(lbl))
+    tf.cond(lbl6,
+            update_x_6,
+            lambda:tf.identity(lbl))
+    tf.cond(lbl7,
+            update_x_7,
+            lambda:tf.identity(lbl))
+    return image,lbl
+
+""" funnction distorted_inputs
+data_dir: Path to the CIFAR-10 data directory.
+batch_size: Number of images per batch.
+partially_labelled: Boolean indicating use of partial labels
+matrix_lab: Boolean indicating if the labels should be 2D (for subclasses in ACOL)
+f_append: String appended to all files (for selecting binaries with additional information
+
+Construct distorted input for CIFAR training using the Reader ops.
+"""
 def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=True,f_append=fileappend):
-  """Construct distorted input for CIFAR training using the Reader ops.
-
-  Args:
-    data_dir: Path to the CIFAR-10 data directory.
-    batch_size: Number of images per batch.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   if not data_dir[-4:] == '.bin':
     print(data_dir[-4:])
     filenames = [os.path.join(data_dir, 'data_batch_%d'%(i))
@@ -245,11 +339,13 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
   # distortions applied to the image.
 
   # Randomly flip the image horizontally.
-  distorted_image = tf.image.random_flip_left_right(reshaped_image)
-    
+  #distorted_image = tf.image.random_flip_left_right(reshaped_image)
+  distortions = tf.random_uniform([3], 0, 1.0, dtype=tf.float32)
+  distorted_image, superlabel = image_distortions(reshaped_image,distortions)
+
   # Randomly crop a [height, width] section of the image.
   #distorted_image = tf.random_crop(reshaped_image, [height, width, 3])
-  distorted_image = tf.image.resize_images(reshaped_image, size)
+  distorted_image = tf.image.resize_images(distorted_image, size)
 
   # Because these operations are not commutative, consider randomizing
   # the order their operation.
@@ -289,6 +385,8 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
   float_image.set_shape([height, width, 3])
   #read_input.label.set_shape([1])
   read_input.superLabel.set_shape([1])
+    
+  #ssuperlabel.set_shape([1])
 
   # Ensure that the random shuffling has good mixing properties.
   min_fraction_of_examples_in_queue = 0.4
@@ -301,21 +399,18 @@ def distorted_inputs(data_dir, batch_size,partially_labelled=False,matrix_lab=Tr
                                          min_queue_examples, batch_size,
                                          shuffle=True)
   # Generate a batch of images and labels by building up a queue of examples.
-  return img, lbl, suplbl
+  return img, lbl, superlabel
 
+""" funnction inputs
+eval_data: bool, indicating if one should use the train or eval data set.
+data_dir: Path to the CIFAR-10 data directory.
+batch_size: Number of images per batch.
+partially_labelled: Boolean indicating use of partial labels
+matrix_lab: Boolean indicating if the labels should be 2D (for subclasses in ACOL)
 
+Construct input for CIFAR evaluation using the Reader ops.
+"""
 def inputs(eval_data, data_dir, batch_size,partially_labelled=False,matrix_lab=False):
-  """Construct input for CIFAR evaluation using the Reader ops.
-
-  Args:
-    eval_data: bool, indicating if one should use the train or eval data set.
-    data_dir: Path to the CIFAR-10 data directory.
-    batch_size: Number of images per batch.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   if not eval_data:
     filenames = [os.path.join(data_dir, 'data_batch_%d'%(i))
                  for i in xrange(1, 6)]
@@ -342,9 +437,13 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False,matrix_lab=F
   height = IMAGE_SIZE
   width = IMAGE_SIZE
 
+  distortions = tf.random_uniform([3], 0, 1.0, dtype=tf.float32) #NOTE NOTE NOTE!!!
+  distorted_image, superlabel = image_distortions(reshaped_image,distortions)
+  
+    
   # Image processing for evaluation.
   # Crop the central [height, width] of the image.
-  resized_image = tf.image.resize_images(reshaped_image, size)
+  resized_image = tf.image.resize_images(distorted_image, size)
 
   # Subtract off the mean and divide by the variance of the pixels.
   #float_image = tf.image.per_image_standardization(resized_image) #NOTE!!!
@@ -374,7 +473,6 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False,matrix_lab=F
       #read_input.label = tf.one_hot(read_input.label * (tf.constant(-1)+read_input.switch*tf.constant(2)), NUM_CLASSES)
       read_input.label.set_shape([1])
 
-
   # Set the shapes of tensors.
   float_image.set_shape([height, width, 3])
   read_input.label.set_shape([1])
@@ -388,22 +486,21 @@ def inputs(eval_data, data_dir, batch_size,partially_labelled=False,matrix_lab=F
                            min_fraction_of_examples_in_queue)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  return _generate_image_and_label_batch(float_image, read_input.label, read_input.superLabel,
+  img,lbl,_ = _generate_image_and_label_batch(float_image, read_input.label, read_input.superLabel,
                                          min_queue_examples, batch_size,
                                          shuffle=False)
+  return img, lbl, superlabel
 
+""" funnction inputs_raw
+eval_data: bool, indicating if one should use the train or eval data set.
+data_dir: Path to the CIFAR-10 data directory.
+batch_size: Number of images per batch.
+partially_labelled: Boolean indicating use of partial labels
+matrix_lab: Boolean indicating if the labels should be 2D (for subclasses in ACOL)
+
+Construct input for CIFAR evaluation using the Reader ops, includes the raw images
+"""
 def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False, matrix_lab=False):
-  """Construct input for CIFAR evaluation using the Reader ops.
-
-  Args:
-    eval_data: bool, indicating if one should use the train or eval data set.
-    data_dir: Path to the CIFAR-10 data directory.
-    batch_size: Number of images per batch.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-  """
   if not eval_data:
     filenames = [os.path.join(data_dir, 'data_batch_%d'+fileappend % i)
                  for i in xrange(1, 6)]
@@ -427,9 +524,12 @@ def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False, matrix_
   height = IMAGE_SIZE
   width = IMAGE_SIZE
 
+  distortions = tf.random_uniform([3], 0, 1.0, dtype=tf.float32) #NOTE NOTE NOTE!!!
+  distorted_image, superlabel = image_distortions(reshaped_image,distortions)
+  
   # Image processing for evaluation.
   # Crop the central [height, width] of the image.
-  resized_image = tf.image.resize_images(reshaped_image, size)
+  resized_image = tf.image.resize_images(distorted_image, size)
 
   # Subtract off the mean and divide by the variance of the pixels.
   #float_image = tf.image.per_image_standardization(resized_image) #NOTE!!!
@@ -474,4 +574,4 @@ def inputs_raw(eval_data, data_dir, batch_size,partially_labelled=False, matrix_
   img,img_raw,lbls, suplbls = _generate_image_and_label_batch(bgr, read_input.label, read_input.superLabel,
                                          min_queue_examples, batch_size,
                                          shuffle=False, raw=True, raw_image=reshaped_image)
-  return img, img_raw, lbls, suplbls
+  return img, img_raw, lbls, superlabel
